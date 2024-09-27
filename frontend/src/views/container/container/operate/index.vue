@@ -280,6 +280,7 @@
                 </el-form>
             </template>
         </LayoutContent>
+        <TaskLog ref="taskLogRef" width="70%" />
     </div>
 </template>
 
@@ -299,13 +300,16 @@ import {
     loadContainerInfo,
 } from '@/api/modules/container';
 import { Container } from '@/api/interface/container';
+import TaskLog from '@/components/task-log/index.vue';
 import { MsgError, MsgSuccess } from '@/utils/message';
-import { checkIpV4V6, checkPort } from '@/utils/util';
+import { checkIpV4V6, checkPort, newUUID } from '@/utils/util';
 import router from '@/routers';
 
 const loading = ref(false);
 const isCreate = ref();
+const taskLogRef = ref();
 const form = reactive<Container.ContainerHelper>({
+    taskID: '',
     containerID: '',
     name: '',
     image: '',
@@ -473,89 +477,94 @@ const onSubmit = async (formEl: FormInstance | undefined) => {
     if (!formEl) return;
     formEl.validate(async (valid) => {
         if (!valid) return;
-        if (form.envStr) {
-            form.env = form.envStr.split('\n');
-        }
-        if (form.labelsStr) {
-            form.labels = form.labelsStr.split('\n');
-        }
-        form.cmd = [];
-        if (form.cmdStr) {
-            if (form.cmdStr.indexOf(`'`) !== -1) {
-                let itemCmd = form.cmdStr.split(`'`);
-                for (const cmd of itemCmd) {
-                    if (cmd && cmd !== ' ') {
-                        form.cmd.push(cmd);
-                    }
-                }
-            } else {
-                let itemCmd = form.cmdStr.split(` `);
-                for (const cmd of itemCmd) {
-                    form.cmd.push(cmd);
-                }
-            }
-        }
-        form.entrypoint = [];
-        if (form.entrypointStr) {
-            if (form.entrypointStr.indexOf(`'`) !== -1) {
-                let itemEntrypoint = form.entrypointStr.split(`'`);
-                for (const entry of itemEntrypoint) {
-                    if (entry && entry !== ' ') {
-                        form.entrypoint.push(entry);
-                    }
-                }
-            } else {
-                let itemEntrypoint = form.entrypointStr.split(` `);
-                for (const entry of itemEntrypoint) {
-                    form.entrypoint.push(entry);
-                }
-            }
-        }
-        if (form.publishAllPorts) {
-            form.exposedPorts = [];
-        } else {
-            if (!checkPortValid()) {
-                return;
-            }
-        }
-        form.memory = Number(form.memory);
-        form.nanoCPUs = Number(form.nanoCPUs);
-
+        loadForm();
         loading.value = true;
+        form.taskID = newUUID();
         if (isCreate.value) {
             await createContainer(form)
                 .then(() => {
                     loading.value = false;
+                    openTaskLog(form.taskID);
                     MsgSuccess(i18n.global.t('commons.msg.operationSuccess'));
                 })
                 .catch(() => {
                     loading.value = false;
                 });
-        } else {
-            ElMessageBox.confirm(
-                i18n.global.t('container.updateContainerHelper'),
-                i18n.global.t('commons.button.edit'),
-                {
-                    confirmButtonText: i18n.global.t('commons.button.confirm'),
-                    cancelButtonText: i18n.global.t('commons.button.cancel'),
-                },
-            )
-                .then(async () => {
-                    await updateContainer(form)
-                        .then(() => {
-                            loading.value = false;
-                            MsgSuccess(i18n.global.t('commons.msg.operationSuccess'));
-                        })
-                        .catch(() => {
-                            updateContainerID();
-                            loading.value = false;
-                        });
-                })
-                .catch(() => {
-                    loading.value = false;
-                });
+            return;
         }
+        ElMessageBox.confirm(i18n.global.t('container.updateContainerHelper'), i18n.global.t('commons.button.edit'), {
+            confirmButtonText: i18n.global.t('commons.button.confirm'),
+            cancelButtonText: i18n.global.t('commons.button.cancel'),
+        })
+            .then(async () => {
+                await updateContainer(form)
+                    .then(() => {
+                        loading.value = false;
+                        openTaskLog(form.taskID);
+                        MsgSuccess(i18n.global.t('commons.msg.operationSuccess'));
+                    })
+                    .catch(() => {
+                        updateContainerID();
+                        loading.value = false;
+                    });
+            })
+            .catch(() => {
+                loading.value = false;
+            });
     });
+};
+const openTaskLog = (taskID: string) => {
+    taskLogRef.value.openWithTaskID(taskID);
+};
+
+const loadForm = () => {
+    if (form.envStr) {
+        form.env = form.envStr.split('\n');
+    }
+    if (form.labelsStr) {
+        form.labels = form.labelsStr.split('\n');
+    }
+    form.cmd = [];
+    if (form.cmdStr) {
+        if (form.cmdStr.indexOf(`'`) !== -1) {
+            let itemCmd = form.cmdStr.split(`'`);
+            for (const cmd of itemCmd) {
+                if (cmd && cmd !== ' ') {
+                    form.cmd.push(cmd);
+                }
+            }
+        } else {
+            let itemCmd = form.cmdStr.split(` `);
+            for (const cmd of itemCmd) {
+                form.cmd.push(cmd);
+            }
+        }
+    }
+    form.entrypoint = [];
+    if (form.entrypointStr) {
+        if (form.entrypointStr.indexOf(`'`) !== -1) {
+            let itemEntrypoint = form.entrypointStr.split(`'`);
+            for (const entry of itemEntrypoint) {
+                if (entry && entry !== ' ') {
+                    form.entrypoint.push(entry);
+                }
+            }
+        } else {
+            let itemEntrypoint = form.entrypointStr.split(` `);
+            for (const entry of itemEntrypoint) {
+                form.entrypoint.push(entry);
+            }
+        }
+    }
+    if (form.publishAllPorts) {
+        form.exposedPorts = [];
+    } else {
+        if (!checkPortValid()) {
+            return;
+        }
+    }
+    form.memory = Number(form.memory);
+    form.nanoCPUs = Number(form.nanoCPUs);
 };
 
 const updateContainerID = async () => {

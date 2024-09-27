@@ -220,13 +220,22 @@ func (u *ContainerService) ComposeUpdate(req dto.ComposeUpdate) error {
 	_, _ = write.WriteString(req.Content)
 	write.Flush()
 
-	global.LOG.Infof("docker-compose.yml %s has been replaced, now start to docker-compose restart", req.Path)
-	if stdout, err := compose.Up(req.Path); err != nil {
-		if err := recreateCompose(string(oldFile), req.Path); err != nil {
-			return fmt.Errorf("update failed when handle compose up, err: %s, recreate failed: %v", string(stdout), err)
-		}
-		return fmt.Errorf("update failed when handle compose up, err: %s", string(stdout))
+	taskItem, err := task.NewTaskWithOps(req.Name, task.TaskUpdate, task.TaskScopeCompose, req.TaskID, 1)
+	if err != nil {
+		return fmt.Errorf("new task for image build failed, err: %v", err)
 	}
+	go func() {
+		taskItem.AddSubTask(i18n.GetMsgByKey("ComposeUpdate"), func(t *task.Task) error {
+			if stdout, err := compose.Up(req.Path); err != nil {
+				if err := recreateCompose(string(oldFile), req.Path); err != nil {
+					return fmt.Errorf("update failed when handle compose up, err: %s, recreate failed: %v", string(stdout), err)
+				}
+				return fmt.Errorf("update failed when handle compose up, err: %s", string(stdout))
+			}
+			return nil
+		}, nil)
+		_ = taskItem.Execute()
+	}()
 
 	return nil
 }

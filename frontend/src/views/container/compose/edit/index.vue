@@ -24,14 +24,18 @@
             </span>
         </template>
     </DrawerPro>
+    <TaskLog ref="taskLogRef" width="70%" />
 </template>
 <script lang="ts" setup>
 import { ref } from 'vue';
 import { composeUpdate } from '@/api/modules/container';
+import TaskLog from '@/components/task-log/index.vue';
 import i18n from '@/lang';
 import { MsgSuccess } from '@/utils/message';
+import { newUUID } from '@/utils/util';
 
 const loading = ref(false);
+const taskLogRef = ref();
 const composeVisible = ref(false);
 const path = ref();
 const content = ref();
@@ -39,6 +43,7 @@ const name = ref();
 
 const onSubmitEdit = async () => {
     const param = {
+        taskID: newUUID(),
         name: name.value,
         path: path.value,
         content: content.value,
@@ -47,12 +52,16 @@ const onSubmitEdit = async () => {
     await composeUpdate(param)
         .then(() => {
             loading.value = false;
+            openTaskLog(param.taskID);
             MsgSuccess(i18n.global.t('commons.msg.operationSuccess'));
             composeVisible.value = false;
         })
         .catch(() => {
             loading.value = false;
         });
+};
+const openTaskLog = (taskID: string) => {
+    taskLogRef.value.openWithTaskID(taskID);
 };
 
 interface DialogProps {

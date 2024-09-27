@@ -81,6 +81,7 @@ type ContainerOperate struct {
 }
 
 type ContainerUpgrade struct {
+	TaskID    string `json:"taskID"`
 	Name      string `json:"name" validate:"required"`
 	Image     string `json:"image" validate:"required"`
 	ForcePull bool   `json:"forcePull"`
@@ -233,6 +234,7 @@ type ComposeOperation struct {
 	WithFile  bool   `json:"withFile"`
 }
 type ComposeUpdate struct {
+	TaskID  string `json:"taskID"`
 	Name    string `json:"name" validate:"required"`
 	Path    string `json:"path" validate:"required"`
 	Content string `json:"content" validate:"required"`

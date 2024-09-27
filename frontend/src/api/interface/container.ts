@@ -39,6 +39,7 @@ export namespace Container {
         memory: number;
     }
     export interface ContainerHelper {
+        taskID: string;
         containerID: string;
         name: string;
         image: string;
@@ -276,6 +277,7 @@ export namespace Container {
         withFile: boolean;
     }
     export interface ComposeUpdate {
+        taskID: string;
         name: string;
         path: string;
         content: string;
